@@ -9,7 +9,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-
 type UserController struct {
 	userService service.UserService
 }
@@ -20,13 +19,13 @@ func NewUserController(service service.UserService) *UserController {
 
 func (c *UserController) SignUp(ctx *gin.Context) {
 
-	var userReq dto.UserSignupRequest
-	if err := ctx.BindJSON(&userReq); err != nil {
+	var request dto.UserSignupRequest
+	if err := ctx.BindJSON(&request); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	err := c.userService.CreateUser(userReq)
+	err := c.userService.CreateUser(request)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
 		return
@@ -48,11 +47,14 @@ func (c *UserController) Login(ctx *gin.Context) {
 		return
 	}
 
-	result := c.userService.Login(request)
+	token, err := c.userService.Login(request)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
 	ctx.JSON(http.StatusOK, gin.H{
-		"token":   result,
+		"token":   token,
 		"message": "login successful",
 	})
-
 }
