@@ -11,6 +11,7 @@ import (
 
 type TransactionService interface {
 	Deposit(request dto.TransferRequest) (*model.Transaction, error)
+	Withdraw(request dto.TransferRequest) (*model.Transaction, error)
 }
 
 type transactionService struct {
@@ -48,6 +49,10 @@ func (ts *transactionService) Deposit(request dto.TransferRequest) (*model.Trans
 	}
 
 	return transaction, nil
+}
+
+func (ts *transactionService) Withdraw(request dto.TransferRequest) (*model.Transaction, error) {
+	return nil, nil
 }
 
 func createTransaction(amount float64, transactionType model.TransactionType, purpose model.TransactionPurpose, senderAccount, receiverAccount string, accountID uint) *model.Transaction {
