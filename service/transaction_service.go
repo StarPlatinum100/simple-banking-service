@@ -12,6 +12,7 @@ import (
 type TransactionService interface {
 	Deposit(request dto.TransferRequest) (*model.Transaction, error)
 	Withdraw(user model.User, request dto.TransferRequest) (*model.Transaction, error)
+	Transfer(user model.User, request dto.TransferRequest) (*model.Transaction, error)
 }
 
 type transactionService struct {
@@ -94,6 +95,72 @@ func (ts *transactionService) Withdraw(user model.User, request dto.TransferRequ
 	}
 
 	return transaction, nil
+}
+
+func (ts *transactionService) Transfer(user model.User, request dto.TransferRequest) (*model.Transaction, error) {
+	senderAccount, err := ts.accountRepo.FindByAccuntNumber(request.From)
+	if err != nil {
+		return nil, err
+	}
+
+	receiverAccount, err := ts.accountRepo.FindByAccuntNumber(request.To)
+	if err != nil {
+		return nil, err
+	}
+
+	if request.Amount > senderAccount.AvailableBalance {
+		return nil, errors.New("insufficient balance")
+	}
+
+	if senderAccount.UserID != user.ID {
+		return nil, errors.New("action not allowed")
+	}
+
+	if senderAccount.Status != model.AccountStatusActive || receiverAccount.Status != model.AccountStatusActive {
+		return nil, errors.New("sender account not active")
+	}
+
+	if request.From == request.To {
+		return nil, errors.New("cannot send money to the same account")
+	}
+
+	if receiverAccount.CurrencyID != senderAccount.CurrencyID {
+		return nil, errors.New("money cannot be transferred to an account in a different currency")
+	}
+
+	// debit
+	senderTransaction := createTransaction(request.Amount, model.Debit, model.WithdrawalInternal, request.From, request.To, senderAccount.ID)
+	senderTransaction.PrevBalance = senderAccount.AvailableBalance
+	newSenderAvailableBalance := senderAccount.AvailableBalance - request.Amount
+	senderAccount.AvailableBalance = newSenderAvailableBalance
+	senderTransaction.CurrentBalance = newSenderAvailableBalance
+	senderTransaction.Description = request.Description
+
+	if err := ts.transactionRepo.SaveTransaction(senderTransaction); err != nil {
+		return nil, err
+	}
+
+	if err := ts.accountRepo.UpdateAccountBalance(senderAccount, newSenderAvailableBalance); err != nil {
+		return nil, err
+	}
+
+	// credit
+	receiverTransaction := createTransaction(request.Amount, model.Credit, model.DepositInternal, request.From, request.To, receiverAccount.ID)
+	receiverTransaction.PrevBalance = receiverAccount.AvailableBalance
+	newReceiverAvailableBalance := receiverAccount.AvailableBalance + request.Amount
+	receiverAccount.AvailableBalance = newReceiverAvailableBalance
+	receiverTransaction.CurrentBalance = newReceiverAvailableBalance
+	receiverTransaction.Description = request.Description
+
+	if err := ts.transactionRepo.SaveTransaction(receiverTransaction); err != nil {
+		return nil, err
+	}
+
+	if err := ts.accountRepo.UpdateAccountBalance(receiverAccount, newReceiverAvailableBalance); err != nil {
+		return nil, err
+	}
+
+	return senderTransaction, nil
 }
 
 func createTransaction(amount float64, transactionType model.TransactionType, purpose model.TransactionPurpose, senderAccount, receiverAccount string, accountID uint) *model.Transaction {

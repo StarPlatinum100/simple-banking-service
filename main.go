@@ -48,6 +48,7 @@ func main() {
 	// transactions
 	apiRoute.POST("transactions/deposit", transactionController.Deposit)
 	apiRoute.POST("transactions/withdraw", middleware.RequireAuthentication(db), transactionController.Withdraw)
+	apiRoute.POST("transactions/transfer", middleware.RequireAuthentication(db), transactionController.Transfer)
 
 	apiRoute.GET("/ping", middleware.RequireAuthentication(db), func(c *gin.Context) {
 		c.JSON(200, gin.H{

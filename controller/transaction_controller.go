@@ -68,3 +68,31 @@ func (tc *TransactionController) Withdraw(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, gin.H{"message": "Withdrawal successful", "transaction": transaction})
 }
+
+func (tc *TransactionController) Transfer(ctx *gin.Context) {
+	user, exists := ctx.Get("user")
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	u, ok := user.(model.User)
+	if !ok {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+
+	var request dto.TransferRequest
+	if err := ctx.ShouldBindJSON(&request); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	transaction, err := tc.transactionService.Transfer(u, request)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"message": "transfer successful", "transaction": transaction})
+}
