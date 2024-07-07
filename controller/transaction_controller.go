@@ -18,6 +18,12 @@ func NewTransactionController(transactionService service.TransactionService) *Tr
 }
 
 func (tc *TransactionController) Deposit(ctx *gin.Context) {
+	securityToken := ctx.GetHeader("token")
+	if securityToken == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "security token cannot be empty"})
+		return
+	}
+
 	var request dto.TransferRequest
 	if err := ctx.ShouldBindJSON(&request); err != nil {
 		log.Println("Error binding JSON:", err)
@@ -31,5 +37,5 @@ func (tc *TransactionController) Deposit(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"message": "Deposit successful", "balance": transaction})
+	ctx.JSON(http.StatusOK, gin.H{"message": "Deposit successful", "transaction": transaction})
 }
