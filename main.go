@@ -20,14 +20,17 @@ func main() {
 	userRepo := repository.NewUserRepository(db)
 	currencyRepo := repository.NewCurrencyRepository(db)
 	accountRepo := repository.NewAccountRepository(db)
+	transactionRepo := repository.NewTransactionRepository(db)
 
 	// initialize services
 	userService := service.NewUserService(userRepo)
 	accountService := service.NewAccountService(accountRepo, currencyRepo)
+	transactionService := service.NewTransactionService(transactionRepo, accountRepo)
 
 	// initialize controllers
 	userController := controller.NewUserController(userService)
 	accountController := controller.NewAccountController(accountService)
+	transactionController := controller.NewTransactionController(transactionService)
 
 	router := gin.Default()
 	apiRoute := router.Group("/api/v1")
@@ -41,6 +44,9 @@ func main() {
 	apiRoute.GET("/accounts/:accountNumber", middleware.RequireAuthentication(db), accountController.FindAccountByAccountNumber)
 	apiRoute.PUT("/accounts", middleware.RequireAuthentication(db), middleware.RequireAdminPrivilege, accountController.UpdateAccount)
 	apiRoute.PUT("/accounts/:accountNumber", middleware.RequireAuthentication(db), middleware.RequireAdminPrivilege, accountController.CloseAccount)
+
+	// transactions
+	apiRoute.POST("transactions/deposit", transactionController.Deposit)
 
 
 	apiRoute.GET("/ping", middleware.RequireAuthentication(db), func(c *gin.Context) {

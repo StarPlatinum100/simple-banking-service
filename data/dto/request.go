@@ -25,3 +25,10 @@ type UpdateAccountDetails struct {
 	Type          model.AccountType   `json:"type" binding:"required"`
 	Status        model.AccountStatus `json:"status" binding:"required"`
 }
+
+type TransferRequest struct {
+	From        string  `json:"from" binding:"len=10"`
+	To          string  `json:"to" binding:"len=10"`
+	Amount      float64 `json:"amount" binding:"gt=0"`
+	Description string  `json:"description" binding:"max=200"`
+}
